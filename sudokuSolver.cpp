@@ -62,7 +62,11 @@ bool checkField(const sudokuField& field) {
 void printField(std::ostream& os, const sudokuField& field) {
     for (std::vector<int> v: field) {
         for (int x: v) {
-            if (x == 0) {
+            if (x == -1) {
+                for(int i = 0; i < (int)std::log10(field.size()); i++)
+                    os << ' ';
+                os << "X ";
+            } else if (x == 0) {
                 for(int i = 0; i < (int)std::log10(field.size()); i++)
                     os << ' ';
                 os << "- ";
@@ -83,6 +87,7 @@ std::ostream& operator<< (std::ostream& os, sudokuField& field) {
 
 int steps;
 long reads;
+sudokuField possib;
 
 std::vector<int> getPossibilities(sudokuField& field, int x, int y) {
     int size = field.size();
@@ -117,6 +122,10 @@ std::vector<int> getPossibilities(sudokuField& field, int x, int y) {
 bool solveSudoku (sudokuField& field, int lastX, int lastY, int lastPossible) {
     ++steps;
     
+    if (steps % 50000 == 0) {
+        std::cout << possib << std::endl;
+    }
+    
     int size = field.size();
     int sizeBase = std::sqrt(size);
     
@@ -131,7 +140,9 @@ bool solveSudoku (sudokuField& field, int lastX, int lastY, int lastPossible) {
         if (field[i][lastY] == 0) {
             /* Count possibilities */
             std::vector<int> possible = getPossibilities(field,i,lastY);
-                
+            possib[i][lastY] = possible.size();
+            
+            
             /* New minimum */
             if (possible.size() < minPossible) {
                 minPossible = possible.size();
@@ -147,7 +158,8 @@ bool solveSudoku (sudokuField& field, int lastX, int lastY, int lastPossible) {
         if (field[lastX][i] == 0) {
             /* Count possibilities */
             std::vector<int> possible = getPossibilities(field,lastX,i);
-                
+            possib[lastX][i] = possible.size();
+            
             /* New minimum */
             if (possible.size() < minPossible) {
                 minPossible = possible.size();
@@ -165,6 +177,7 @@ bool solveSudoku (sudokuField& field, int lastX, int lastY, int lastPossible) {
         if (field[j][k] == 0) {
             /* Count possibilities */
             std::vector<int> possible = getPossibilities(field,j,k);
+            possib[j][k] = possible.size();
                 
             /* New minimum */
             if (possible.size() < minPossible) {
@@ -191,6 +204,7 @@ bool solveSudoku (sudokuField& field, int lastX, int lastY, int lastPossible) {
                 
                 /* Count possibilities */
                 std::vector<int> possible = getPossibilities(field,i,j);
+                possib[i][j] = possible.size();
                     
                 /* New minimum */
                 if (possible.size() < minPossible) {
@@ -214,9 +228,11 @@ bool solveSudoku (sudokuField& field, int lastX, int lastY, int lastPossible) {
     /* Try possibilities */
     for (int i: possibleNumbers) {
         field[x][y] = i;
+        possib[x][y] = 0;
         if (solveSudoku(field,x,y,minPossible))
             return true;
         field[x][y] = 0;
+        possib[x][y] = -1;
     }
          
     return false;
@@ -239,6 +255,18 @@ int main(int argv, char** argc) {
         std::cout << "Not a valid field." << std::endl;
         return 1;
     }
+    
+    possib.resize(field.size());
+    for(std::vector<int>& i : possib) {
+        i.resize(field.size(),-1);
+    }
+    for(int i=0; i < field.size(); ++i) {
+        for(int j=0; j < field.size(); ++j) {
+            if (field[i][j] > 0)
+                possib[i][j] = 0;
+        }
+    }
+    
     
     auto begin = std::chrono::high_resolution_clock::now();
     bool res = solveSudoku(field,0,0,0);
